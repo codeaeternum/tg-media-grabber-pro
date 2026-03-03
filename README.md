@@ -1,6 +1,6 @@
 # TG Media Grabber Pro
 
-![Version](https://img.shields.io/badge/version-4.2-blue) ![License](https://img.shields.io/badge/license-MIT-green)
+![Version](https://img.shields.io/badge/version-4.3-blue) ![License](https://img.shields.io/badge/license-MIT-green)
 
 **The ultimate tool for downloading media from Telegram Web (K & A versions).**
 

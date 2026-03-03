@@ -1,4 +1,4 @@
-# Chrome Web Store Listing — TG Media Grabber Pro v4.2
+# Chrome Web Store Listing — TG Media Grabber Pro v4.3
 
 ## Short Description (132 chars max)
 Download photos, videos, GIFs & files from Telegram Web. Bulk download, floating buttons, gallery view & restricted content bypass.
@@ -80,7 +80,7 @@ When submitting, Chrome Web Store asks about permissions. Here's what to answer:
 - [ ] Verify developer email address
 
 ### Upload & Submit
-- [ ] Upload `store/tg_media_grabber_pro.zip` (v4.2, ~75 KB)
+- [ ] Upload `store/tg_media_grabber_pro.zip` (v4.3, ~75 KB)
 - [ ] Paste short description (132 chars — see above)
 - [ ] Paste detailed description (see above, inside the ``` block)
 - [ ] Set category: **Productivity**

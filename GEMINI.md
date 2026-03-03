@@ -9,7 +9,7 @@ Documento de contexto del proyecto para sesiones de IA y desarrollo futuro. Actu
 **TG Media Grabber Pro** es una **extensión de Chrome (Manifest V3)** que permite descargar fotos, vídeos, GIFs y documentos desde **Telegram Web** (versiones K y A: `web.telegram.org/k/` y `/a/`). Todo corre en el navegador; no hay backend propio.
 
 - **Nombre en manifest:** TG Media Grabber Pro  
-- **Versión actual:** 4.2 (en `manifest.json`)  
+- **Versión actual:** 4.3 (en `manifest.json`)  
 - **Idioma del código/comentarios:** inglés; mensajes de usuario en inglés (unificado).
 - **Repositorio:** [GitHub — GalindoAsc/tg-media-grabber-pro](https://github.com/GalindoAsc/tg-media-grabber-pro). **MCP de GitHub:** servidor `user-GitHub`; herramientas útiles: `list_issues`, `list_releases`, `list_pull_requests`, `list_commits`, `search_issues`, `create_pull_request`, etc. (ver `mcps/user-GitHub/tools/` en el proyecto Cursor). Al listar releases, comprobar owner/repo (p. ej. upstream puede ser `codeaeternum/tg-media-grabber-pro`).
 
@@ -123,8 +123,8 @@ No hay Node/npm, bundler, ni tests automatizados en el repo actual.
 - **Séptima ronda:**
   - **Polling con backoff en injected.js:** Sustituido `setInterval(500)` fijo por polling con backoff: 500 ms los primeros 5 s, luego 1 s hasta 20 s, luego 2 s hasta 30 s (API y rootScope). Reduce uso de CPU cuando Telegram Web tarda en cargar.
 - **Octava ronda:**
-  - **CHANGELOG.md:** Añadido en la raíz con versión 4.2 y resumen de cambios (Added, Changed, Fixed) de la auditoría e implementación de Marzo 2025. Enlazado desde GEMINI (estructura y archivos de referencia).
-- **Commit:** Cambios de la auditoría agrupados en commit `0ebca96` (main): "Audit 2025: security, UX, a11y, docs (v4.2)". Pendiente de push a `origin` si se desea publicar.
+  - **CHANGELOG.md:** Añadido en la raíz con versión 4.3 y resumen de cambios (Added, Changed, Fixed) de la auditoría e implementación de Marzo 2025. Enlazado desde GEMINI (estructura y archivos de referencia).
+  - **Releases:** v4.3 publicada en GitHub (tag + release con zip). Subir el zip a Chrome Web Store manualmente.
 - **Fix duplicados:** La búsqueda de archivos existentes (`getExistingFiles`) usaba siempre la carpeta "TG_Media". Si el usuario había cambiado la carpeta en Ajustes, no se detectaban los ya descargados y se repetían. Corregido: el content script envía `folderName: S.folderName` al pedir archivos existentes y el background usa `query: [folder]` con esa carpeta.
 
 ---

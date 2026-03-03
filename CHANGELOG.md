@@ -4,7 +4,7 @@ All notable changes to TG Media Grabber Pro are documented here. Version numbers
 
 ---
 
-## [4.2] — 2025-03
+## [4.3] — 2025-03
 
 ### Added
 - Keyboard shortcut hint in popup: Ctrl+Shift+D (download current), Ctrl+Shift+G (gallery).
