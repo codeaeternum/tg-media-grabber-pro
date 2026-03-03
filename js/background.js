@@ -72,10 +72,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
-  // Pre-scan: get all existing files in TG_Media for bulk duplicate check
+  // Pre-scan: get all existing files in the configured folder for bulk duplicate check
   if (msg.action === "getExistingFiles") {
+    const folder = (msg.folderName && String(msg.folderName).trim()) || "TG_Media";
     chrome.downloads.search({
-      query: ["TG_Media"],
+      query: [folder],
       state: "complete",
       limit: 5000
     }, (results) => {
@@ -83,7 +84,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       results?.forEach(r => {
         if (r.exists !== false && r.filename) {
           const name = r.filename.replace(/\\/g, "/").split("/").pop();
-          if (name) files.add(nameKey(name));
+          if (name) {
+            const key = nameKey(name);
+            files.add(key);
+            // For video_MSGID_duration.mp4 also add video_MSGID so grid items named video_MSGID.mp4 match
+            const videoStem = name.match(/^video_(\d+)/i);
+            if (videoStem) files.add("video_" + videoStem[1]);
+          }
         }
       });
       sendResponse({ files: [...files] });

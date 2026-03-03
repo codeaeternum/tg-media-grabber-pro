@@ -33,6 +33,7 @@ tg_media_grabber_pro/
 ├── store/                  # LISTING.md (texto Chrome Web Store)
 ├── AUDIT_REPORT.md         # Auditoría detallada (Marzo 2025)
 ├── CHANGELOG.md            # Historial de versiones y cambios
+├── TESTING.md              # Cómo cargar y probar la extensión (checklist post-auditoría)
 ├── GEMINI.md               # Este archivo
 └── README.md
 ```
@@ -124,6 +125,7 @@ No hay Node/npm, bundler, ni tests automatizados en el repo actual.
 - **Octava ronda:**
   - **CHANGELOG.md:** Añadido en la raíz con versión 4.2 y resumen de cambios (Added, Changed, Fixed) de la auditoría e implementación de Marzo 2025. Enlazado desde GEMINI (estructura y archivos de referencia).
 - **Commit:** Cambios de la auditoría agrupados en commit `0ebca96` (main): "Audit 2025: security, UX, a11y, docs (v4.2)". Pendiente de push a `origin` si se desea publicar.
+- **Fix duplicados:** La búsqueda de archivos existentes (`getExistingFiles`) usaba siempre la carpeta "TG_Media". Si el usuario había cambiado la carpeta en Ajustes, no se detectaban los ya descargados y se repetían. Corregido: el content script envía `folderName: S.folderName` al pedir archivos existentes y el background usa `query: [folder]` con esa carpeta.
 
 ---
 

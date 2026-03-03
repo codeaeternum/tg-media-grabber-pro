@@ -1100,6 +1100,18 @@
   async function downloadItem(item, onProgress) {
     const { type, src, el, name, isCanvas, unloaded } = item;
 
+    // Guard: skip if already downloaded (by msgId) — prevents double download from any path
+    if (item._msgId) {
+      const chatName = getChatName();
+      const midKey = chatName ? `${chatName}:${item._msgId}` : null;
+      if (midKey && S.downloadedMids.has(midKey)) {
+        log.i(`⏭ Skip (already in downloadedMids): ${name}`);
+        return { success: true, realFileName: name, skipped: true };
+      }
+      // Claim immediately so any concurrent call for same item will hit the guard above
+      if (midKey) { S.downloadedMids.add(midKey); _saveMids(); }
+    }
+
     // ── Strategy 1: Try Telegram API download (fastest, most reliable) ──
     if (item._msgId) {
       const peerId = getPeerId();
@@ -2112,6 +2124,14 @@
   function nameKey(filename) {
     return filename.replace(/\.[^.]+$/, "").toLowerCase();
   }
+  // Add nameKey and, for video_MSGID*.mp4, also video_MSGID so both naming variants match
+  function addExistingFileKeys(set, filename) {
+    if (!filename) return;
+    const key = nameKey(filename);
+    set.add(key);
+    const m = String(filename).match(/^video_(\d+)/i);
+    if (m) set.add("video_" + m[1]);
+  }
 
   async function bulkDownload(types, media) {
     if (S.downloading) return;
@@ -2134,7 +2154,7 @@
     let existingFiles = new Set();
     try {
       const result = await new Promise((resolve) => {
-        chrome.runtime.sendMessage({ action: "getExistingFiles" }, (r) => {
+        chrome.runtime.sendMessage({ action: "getExistingFiles", folderName: S.folderName }, (r) => {
           resolve(r?.files || []);
         });
       });
@@ -2149,8 +2169,9 @@
     const chatName = getChatName();
     for (const item of filtered) {
       const key = nameKey(item.name);
-      // Check by filename (works for videos with stable names)
-      if (existingFiles.has(key)) {
+      const videoStem = item.type === "video" && item._msgId ? "video_" + item._msgId : null;
+      // Check by filename (works for videos with stable names); for video also by stem (video_MSGID)
+      if (existingFiles.has(key) || (videoStem && existingFiles.has(videoStem))) {
         log.i(`⏭ Pre-skip (name): ${item.name}`);
         skippedCount++;
         continue;
@@ -2181,19 +2202,11 @@
       if (S.abortController.signal.aborted) break;
       try {
         const result = await downloadItem(toDownload[i], (pct) => showToast(`Downloading ${toDownload[i].name}`, i, toDownload.length));
-        // Track both the scan name AND the real viewer name as downloaded
-        const scanKey = nameKey(toDownload[i].name);
-        existingFiles.add(scanKey);
+        addExistingFileKeys(existingFiles, toDownload[i].name);
+        if (toDownload[i]._msgId && chatName) { S.downloadedMids.add(`${chatName}:${toDownload[i]._msgId}`); _saveMids(); }
         if (result && typeof result === "object" && result.realFileName) {
-          const realKey = nameKey(result.realFileName);
-          if (realKey !== scanKey) {
-            existingFiles.add(realKey);
-            log.i(`Tracking alias: ${toDownload[i].name} → ${result.realFileName}`);
-          }
-        }
-        // Track by message ID for reliable photo dedup
-        if (toDownload[i]._msgId && chatName) {
-          S.downloadedMids.add(`${chatName}:${toDownload[i]._msgId}`);
+          addExistingFileKeys(existingFiles, result.realFileName);
+          if (nameKey(result.realFileName) !== nameKey(toDownload[i].name)) log.i(`Tracking alias: ${toDownload[i].name} → ${result.realFileName}`);
         }
         showToast("Downloading...", i + 1, toDownload.length);
       } catch (e) { log.e(e.message); }
@@ -2287,7 +2300,7 @@
               let existingFiles = new Set();
               try {
                 const r = await new Promise(resolve => {
-                  chrome.runtime.sendMessage({ action: "getExistingFiles" }, res => resolve(res?.files || []));
+                  chrome.runtime.sendMessage({ action: "getExistingFiles", folderName: S.folderName }, res => resolve(res?.files || []));
                 });
                 existingFiles = new Set(r);
                 S._bulkExistingFiles = existingFiles; // Enable metadata pre-check in downloadItem
@@ -2402,8 +2415,9 @@
                   if (acDl.signal.aborted) break;
                   P.fileName = item.name;
                   const key = nameKey(item.name);
+                  const videoStem = item.type === "video" && item._msgId ? "video_" + item._msgId : null;
 
-                  if (existingFiles.has(key)) { P.skipped++; log.i(`⏭ Skip: ${item.name}`); continue; }
+                  if (existingFiles.has(key) || (videoStem && existingFiles.has(videoStem))) { P.skipped++; log.i(`⏭ Skip: ${item.name}`); continue; }
                   if (item._msgId && chatName && S.downloadedMids.has(`${chatName}:${item._msgId}`)) { P.skipped++; continue; }
 
                   try {
@@ -2417,10 +2431,9 @@
                     const result = await Promise.race([downloadItem(item), skipPromise]);
                     skipAc = null;
                     P.downloaded++;
-                    existingFiles.add(key);
-                    if (item._msgId && chatName) S.downloadedMids.add(`${chatName}:${item._msgId}`);
-                    // Track real filename from API result too
-                    if (result?.realFileName) existingFiles.add(nameKey(result.realFileName));
+                    addExistingFileKeys(existingFiles, item.name);
+                    if (item._msgId && chatName) { S.downloadedMids.add(`${chatName}:${item._msgId}`); _saveMids(); }
+                    if (result?.realFileName) addExistingFileKeys(existingFiles, result.realFileName);
                   } catch (e) {
                     skipAc = null;
                     if (e.message === "__SKIPPED__") {
@@ -2951,7 +2964,7 @@
   // =============================================
   function init() {
     const v = detectVersion();
-    log.i(`Initializing v2 — Version ${v}`);
+    log.i(`Initializing — Version ${v}`);
 
     function startAll() {
       injectInterceptor();

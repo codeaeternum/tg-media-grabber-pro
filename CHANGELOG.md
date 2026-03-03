@@ -30,6 +30,7 @@ All notable changes to TG Media Grabber Pro are documented here. Version numbers
 ### Fixed
 - Popup CSS: defined missing variable `--bg-secondary` used by the feedback modal.
 - Toggles in settings are now `<button>` elements for correct semantics and accessibility.
+- Duplicate downloads: same media no longer downloaded twice (claim by msgId in `downloadItem`, video stem in `getExistingFiles` and pre-filter so `video_MSGID.mp4` matches existing `video_MSGID_duration.mp4`).
 
 ---
 
