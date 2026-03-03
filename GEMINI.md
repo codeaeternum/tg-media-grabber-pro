@@ -123,6 +123,7 @@ No hay Node/npm, bundler, ni tests automatizados en el repo actual.
   - **Polling con backoff en injected.js:** Sustituido `setInterval(500)` fijo por polling con backoff: 500 ms los primeros 5 s, luego 1 s hasta 20 s, luego 2 s hasta 30 s (API y rootScope). Reduce uso de CPU cuando Telegram Web tarda en cargar.
 - **Octava ronda:**
   - **CHANGELOG.md:** Añadido en la raíz con versión 4.2 y resumen de cambios (Added, Changed, Fixed) de la auditoría e implementación de Marzo 2025. Enlazado desde GEMINI (estructura y archivos de referencia).
+- **Commit:** Cambios de la auditoría agrupados en commit `0ebca96` (main): "Audit 2025: security, UX, a11y, docs (v4.2)". Pendiente de push a `origin` si se desea publicar.
 
 ---
 
