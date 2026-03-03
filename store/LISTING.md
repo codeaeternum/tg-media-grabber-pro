@@ -17,7 +17,7 @@ Download any media from Telegram Web with ease. Works on both web.telegram.org/k
 • 🔓 Restricted content bypass — download from protected channels
 • ⏩ Auto-scroll to discover old media
 • 📁 Organized downloads — files saved in TG_Media/{ChatName}/
-• ⌨️ Keyboard shortcut (Ctrl+Shift+D)
+• ⌨️ Keyboard shortcuts: Ctrl+Shift+D (download), Ctrl+Shift+G (gallery)
 • 🎯 Smart duplicate detection — won't re-download existing files
 • 📏 Configurable max file size — auto-skip videos above your chosen limit
 • 🛡️ Resilient downloads — graceful error recovery, never gets stuck

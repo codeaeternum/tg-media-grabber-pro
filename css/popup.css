@@ -3,6 +3,7 @@
    ═══════════════════════════════════════════ */
 :root {
     --bg-primary: #0a0e17;
+    --bg-secondary: rgba(22, 27, 40, 0.95);
     --bg-card: rgba(22, 27, 40, 0.85);
     --bg-card-hover: rgba(30, 38, 55, 0.95);
     --bg-glass: rgba(255, 255, 255, 0.04);
@@ -312,6 +313,14 @@ body {
     flex-shrink: 0;
 }
 
+.shortcuts-hint {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin: 8px 0 0;
+    text-align: center;
+    line-height: 1.3;
+}
+
 /* ── Progress Section ────────────────── */
 .progress-section {
     display: none;
@@ -466,6 +475,12 @@ body {
 }
 
 /* Toggle Switch */
+button.toggle {
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+}
 .toggle {
     width: 38px;
     height: 20px;

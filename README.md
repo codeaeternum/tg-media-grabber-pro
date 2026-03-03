@@ -15,7 +15,7 @@ TG Media Grabber Pro allows you to easily download photos, videos, GIFs, and doc
 - **🚀 Bulk Download**: Download all media from a chat in one go.
 - **⏩ Auto-Scroll**: Automatically scroll through history to find old media.
 - **📁 Organized Downloads**: Files saved to `TG_Media/{ChatName}/`.
-- **⌨️ Keyboard Shortcut**: `Ctrl+Shift+D` for quick downloads.
+- **⌨️ Keyboard Shortcuts**: `Ctrl+Shift+D` — download current media; `Ctrl+Shift+G` — open gallery.
 - **🎯 Smart Duplicate Detection**: Skips files already on disk.
 - **📏 Configurable Max File Size**: Auto-skip videos above your chosen limit (500 MB – 4 GB).
 - **🛡️ Resilient Downloads**: Graceful error recovery — never gets stuck on failures.
@@ -37,10 +37,11 @@ TG Media Grabber Pro allows you to easily download photos, videos, GIFs, and doc
 1. Open [Telegram Web](https://web.telegram.org/).
 2. Navigate to a chat or channel.
 3. Click the **TG Media Grabber** icon in your browser toolbar.
-4. **Scan**: Click "Scan" to see count of visible media.
+4. **Scan**: Click "Scan" to see count of visible media (Photos, Videos, GIFs).
 5. **Download**:
    - Use the floating buttons on messages in the chat.
-   - Or use "Download All" in the popup.
+   - Or select types and click "Download All" in the popup.
+   - Check **History** in the popup for recent downloads; use **Send Feedback** to report bugs or suggest features.
 
 ## Privacy
 
@@ -54,6 +55,12 @@ This extension runs entirely locally on your machine.
 - 🌐 Website: [codeaeternum.com](https://codeaeternum.com)
 - 𝕏 Twitter: [@CodeAeternum](https://x.com/CodeAeternum)
 - ☕ Support development: [ko-fi.com/codeaeternum](https://ko-fi.com/codeaeternum)
+
+## For developers
+
+- **Context & conventions**: See [GEMINI.md](GEMINI.md) for project structure, data flow, and decisions.
+- **Audit & improvements**: See [AUDIT_REPORT.md](AUDIT_REPORT.md) for the full audit and checklist.
+- **Release history**: See [CHANGELOG.md](CHANGELOG.md) for version history and changes.
 
 ## Disclaimer
 

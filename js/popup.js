@@ -1,5 +1,5 @@
 /**
- * TG Media Grabber Pro v4.0 — Popup Script
+ * TG Media Grabber Pro — Popup Script
  */
 document.addEventListener("DOMContentLoaded", () => {
   const $ = (s) => document.querySelector(s);
@@ -36,26 +36,43 @@ document.addEventListener("DOMContentLoaded", () => {
   const selectedTypes = new Set(["photos", "videos", "gifs"]);
   let dlStartTime = 0;
   let lastDlCurrent = 0;
+  const PING_TIMEOUT_MS = 2500;
 
-  // ── Card selection ──
+  // ── Card selection (persisted) ──
+  function applySelectedTypesToUI() {
+    document.querySelectorAll(".type-card").forEach((c) => {
+      const t = c.dataset.type;
+      if (selectedTypes.has(t)) c.classList.add("sel");
+      else c.classList.remove("sel");
+    });
+  }
+  function saveSelectedTypes() {
+    save({ selectedTypes: [...selectedTypes] });
+  }
   document.querySelectorAll(".type-card").forEach((c) => {
     const t = c.dataset.type;
     if (selectedTypes.has(t)) c.classList.add("sel");
     c.addEventListener("click", () => {
       if (selectedTypes.has(t)) { selectedTypes.delete(t); c.classList.remove("sel"); }
       else { selectedTypes.add(t); c.classList.add("sel"); }
+      saveSelectedTypes();
     });
   });
 
   // ── Toggles ──
+  function updateToggleAria(el) {
+    el.setAttribute("aria-checked", el.classList.contains("on") ? "true" : "false");
+  }
   togRestrict.addEventListener("click", () => {
     togRestrict.classList.toggle("on");
+    updateToggleAria(togRestrict);
     const v = togRestrict.classList.contains("on");
     save({ restrictedEnabled: v });
     send({ action: "updateSettings", restrictedEnabled: v });
   });
   togButtons.addEventListener("click", () => {
     togButtons.classList.toggle("on");
+    updateToggleAria(togButtons);
     const v = togButtons.classList.contains("on");
     save({ buttonsEnabled: v });
     send({ action: "updateSettings", buttonsEnabled: v });
@@ -127,38 +144,53 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ── Ping ──
+  // ── Ping (with timeout) ──
+  function setDisconnected(msg) {
+    dot.classList.remove("on");
+    statusTxt.textContent = msg || "Open web.telegram.org first";
+    btnGallery.disabled = true;
+    btnBulk.disabled = true;
+    btnBulk.title = "Open web.telegram.org first";
+    btnScan.disabled = true;
+    btnRescan.disabled = true;
+  }
+  function setConnected(r) {
+    dot.classList.add("on");
+    statusTxt.textContent = `Connected — Telegram Web ${r.version}`;
+    btnGallery.disabled = false;
+    btnBulk.disabled = false;
+    btnBulk.title = "Download all selected media";
+    btnScan.disabled = false;
+    btnRescan.disabled = false;
+    send({ action: "getCachedScan" }, (cr) => {
+      if (cr?.cached) {
+        const ago = cr.agoMinutes < 1 ? "just now" : `${cr.agoMinutes}m ago`;
+        statusTxt.textContent = `📦 ${cr.count} items cached (${ago})`;
+      }
+    });
+    send({ action: "getDownloadStatus" }, (ds) => {
+      if (ds?.active) {
+        setLoading(btnBulk, true);
+        statusTxt.textContent = `⬇ ${ds.downloaded}/${ds.total}${ds.skipped ? ` · ${ds.skipped} dup` : ""}`;
+        btnBulk.querySelector("span").textContent = `Downloading...`;
+      }
+    });
+  }
   function ping() {
+    let answered = false;
+    const timeoutId = setTimeout(() => {
+      if (answered) return;
+      answered = true;
+      setDisconnected("Open web.telegram.org first");
+    }, PING_TIMEOUT_MS);
     send({ action: "ping" }, (r) => {
+      if (answered) return;
+      answered = true;
+      clearTimeout(timeoutId);
       if (r?.status === "ok" || r?.status === "active") {
-        dot.classList.add("on");
-        statusTxt.textContent = `Connected — Telegram Web ${r.version}`;
-        btnGallery.disabled = false;
-        btnBulk.disabled = false;
-        btnScan.disabled = false;
-        btnRescan.disabled = false;
-        // Check if cached scan exists — show info in status
-        send({ action: "getCachedScan" }, (cr) => {
-          if (cr?.cached) {
-            const ago = cr.agoMinutes < 1 ? "just now" : `${cr.agoMinutes}m ago`;
-            statusTxt.textContent = `📦 ${cr.count} items cached (${ago})`;
-          }
-        });
-        // Check if download is in progress (restore progress bar on popup reopen)
-        send({ action: "getDownloadStatus" }, (ds) => {
-          if (ds?.active) {
-            setLoading(btnBulk, true);
-            statusTxt.textContent = `⬇ ${ds.downloaded}/${ds.total}${ds.skipped ? ` · ${ds.skipped} dup` : ""}`;
-            btnBulk.querySelector("span").textContent = `Downloading...`;
-          }
-        });
+        setConnected(r);
       } else {
-        dot.classList.remove("on");
-        statusTxt.textContent = "Open web.telegram.org first";
-        btnGallery.disabled = true;
-        btnBulk.disabled = true;
-        btnScan.disabled = true;
-        btnRescan.disabled = true;
+        setDisconnected(chrome.runtime?.lastError ? "Could not reach tab" : "Open web.telegram.org first");
       }
     });
   }
@@ -194,6 +226,8 @@ document.addEventListener("DOMContentLoaded", () => {
     progFill.style.width = "0%";
     progTxt.textContent = "Starting download...";
     progPct.textContent = "0%";
+    const progBar = document.getElementById("progBar");
+    if (progBar) progBar.setAttribute("aria-valuenow", "0");
     progSpeed.textContent = "";
     progFile.textContent = "";
     dlStartTime = Date.now();
@@ -224,6 +258,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const pct = Math.round((msg.current / msg.total) * 100);
       progFill.style.width = `${pct}%`;
       progPct.textContent = `${pct}%`;
+      const progBar = document.getElementById("progBar");
+      if (progBar) progBar.setAttribute("aria-valuenow", String(pct));
       const name = msg.fileName || "";
       const shortName = name.length > 28 ? name.substring(0, 25) + "..." : name;
       progTxt.textContent = `${msg.current}/${msg.total}`;
@@ -275,11 +311,16 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   function save(d) { chrome.storage.local.set(d); }
   function load() {
-    chrome.storage.local.get(["buttonsEnabled", "restrictedEnabled", "folderName", "maxFileSizeMB"], (d) => {
-      if (d.buttonsEnabled === false) togButtons.classList.remove("on");
-      if (d.restrictedEnabled === false) togRestrict.classList.remove("on");
+    chrome.storage.local.get(["buttonsEnabled", "restrictedEnabled", "folderName", "maxFileSizeMB", "selectedTypes"], (d) => {
+      if (d.buttonsEnabled === false) { togButtons.classList.remove("on"); togButtons.setAttribute("aria-checked", "false"); }
+      if (d.restrictedEnabled === false) { togRestrict.classList.remove("on"); togRestrict.setAttribute("aria-checked", "false"); }
       if (d.folderName) folder.value = d.folderName;
       if (d.maxFileSizeMB !== undefined) selMaxSize.value = String(d.maxFileSizeMB);
+      if (Array.isArray(d.selectedTypes) && d.selectedTypes.length) {
+        selectedTypes.clear();
+        d.selectedTypes.forEach((t) => selectedTypes.add(t));
+        applySelectedTypesToUI();
+      }
     });
   }
 
@@ -298,16 +339,24 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#btnFeedback").addEventListener("click", (e) => {
     e.preventDefault();
     fbOverlay.classList.add("open");
+    fbOverlay.setAttribute("aria-hidden", "false");
     fbBody.style.display = "";
     fbSuccess.style.display = "none";
     fbMessage.value = "";
     fbSubmit.disabled = false;
     fbSubmit.querySelector("span").textContent = "Send";
+    setTimeout(() => fbMessage.focus(), 50);
   });
 
-  function closeFbModal() { fbOverlay.classList.remove("open"); }
+  function closeFbModal() {
+    fbOverlay.classList.remove("open");
+    fbOverlay.setAttribute("aria-hidden", "true");
+  }
   $("#fbClose").addEventListener("click", closeFbModal);
   fbOverlay.addEventListener("click", (e) => { if (e.target === fbOverlay) closeFbModal(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && fbOverlay.classList.contains("open")) closeFbModal();
+  });
 
   // Type selector
   fbOverlay.querySelectorAll(".fb-type-btn").forEach((btn) => {
@@ -318,11 +367,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Submit to Google Forms
-  // ⚠️ REPLACE these entry IDs with your actual Google Form entry IDs
-  const GOOGLE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSe9wih_kZ9xHyid3T0-hELgm9blkkASsG-h6FDWnvfKIUBXNw/formResponse";
-  const ENTRY_TYPE = "entry.675272766";
-  const ENTRY_MESSAGE = "entry.292794743";
+  // Feedback form — replace with your own Google Form URL and field entry IDs for production
+  const FEEDBACK_CONFIG = {
+    url: "https://docs.google.com/forms/d/e/1FAIpQLSe9wih_kZ9xHyid3T0-hELgm9blkkASsG-h6FDWnvfKIUBXNw/formResponse",
+    entryType: "entry.675272766",
+    entryMessage: "entry.292794743",
+  };
 
   fbSubmit.addEventListener("click", async () => {
     const msg = fbMessage.value.trim();
@@ -333,10 +383,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       const formData = new URLSearchParams();
-      formData.append(ENTRY_TYPE, fbType);
-      formData.append(ENTRY_MESSAGE, msg);
+      formData.append(FEEDBACK_CONFIG.entryType, fbType);
+      formData.append(FEEDBACK_CONFIG.entryMessage, msg);
 
-      await fetch(GOOGLE_FORM_URL, {
+      await fetch(FEEDBACK_CONFIG.url, {
         method: "POST",
         mode: "no-cors",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },

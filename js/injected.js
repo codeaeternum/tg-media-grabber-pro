@@ -1,5 +1,5 @@
 /**
- * TG Media Grabber Pro v3.0 — Page Context Injected Script
+ * TG Media Grabber Pro — Page Context Injected Script
  * Runs in MAIN WORLD to access Telegram's internal APIs.
  *
  * STRATEGY 1 (primary): appDownloadManager.downloadMedia()
@@ -32,17 +32,21 @@
     return false;
   }
 
-  // Poll for API readiness (Telegram loads asynchronously)
-  const apiPoll = setInterval(() => {
-    if (checkApiReady()) clearInterval(apiPoll);
-  }, 500);
-  setTimeout(() => clearInterval(apiPoll), 30000); // Stop after 30s
+  // Poll for API readiness with backoff (500ms → 1s → 2s) to reduce CPU on slow loads
+  const API_POLL_MAX_MS = 30000;
+  function pollApiReady(elapsedMs) {
+    if (checkApiReady()) return;
+    if (elapsedMs >= API_POLL_MAX_MS) return;
+    const delay = elapsedMs < 5000 ? 500 : elapsedMs < 20000 ? 1000 : 2000;
+    setTimeout(() => pollApiReady(elapsedMs + delay), delay);
+  }
+  setTimeout(() => pollApiReady(0), 500);
 
   // ─── rootScope Progress Events ─────────────────────────────────
   function setupProgressListener() {
-    const poll = setInterval(() => {
+    const ROOT_POLL_MAX_MS = 30000;
+    function pollRootScope(elapsedMs) {
       if (window.rootScope) {
-        clearInterval(poll);
         rootScopeReady = true;
         window.rootScope.addEventListener("download_progress", (ev) => {
           if (ev.fileName) {
@@ -59,9 +63,13 @@
           }
         });
         console.log(`${LOG} ✓ rootScope progress listener active`);
+        return;
       }
-    }, 500);
-    setTimeout(() => clearInterval(poll), 30000);
+      if (elapsedMs >= ROOT_POLL_MAX_MS) return;
+      const delay = elapsedMs < 5000 ? 500 : elapsedMs < 20000 ? 1000 : 2000;
+      setTimeout(() => pollRootScope(elapsedMs + delay), delay);
+    }
+    setTimeout(() => pollRootScope(0), 500);
   }
   setupProgressListener();
 
@@ -265,8 +273,9 @@
   }
 
   // ─── Message Handler ──────────────────────────────────────────
+  const ALLOWED_ORIGIN = location.origin;
   window.addEventListener("message", async (event) => {
-    if (event.source !== window) return;
+    if (event.source !== window || event.origin !== ALLOWED_ORIGIN) return;
     const { data } = event;
 
     // API-based download (primary strategy)
@@ -346,5 +355,5 @@
     }
   });
 
-  console.log(`${LOG} Interceptor v3.0 ready ✓`);
+  console.log(`${LOG} Interceptor ready`);
 })();

@@ -1,5 +1,6 @@
 /**
- * TG Media Grabber Pro v2 — Background Service Worker
+ * TG Media Grabber Pro — Background Service Worker
+ * (version from manifest.json)
  */
 
 // Strip extension and lowercase for comparison

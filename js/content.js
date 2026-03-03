@@ -1,5 +1,5 @@
 /**
- * TG Media Grabber Pro v2 — Content Script
+ * TG Media Grabber Pro — Content Script
  * Full support for web.telegram.org/k/ AND /a/
  * Features: individual DL, bulk DL, auto-scroll, gallery preview,
  *           restricted content bypass, media viewer DL, stories DL,
@@ -11,6 +11,15 @@
   // =============================================
   // CONSTANTS & STATE
   // =============================================
+  const CONFIG = {
+    MAX_HISTORY: 200,
+    MAX_DOWNLOADED_MIDS: 5000,
+    DOWNLOAD_TIMEOUT_MS: 120000,
+    BLOB_REVOKE_DELAY_MS: 8000,
+    GET_METADATA_TIMEOUT_MS: 3000,
+    CHECK_API_TIMEOUT_MS: 500,
+  };
+
   const LOG = "[TG Grabber]";
   const log = {
     i: (m) => console.log(`${LOG} ${m}`),
@@ -80,20 +89,20 @@
     return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
   };
 
-  // Persist download history to storage (capped at 200 entries)
+  // Persist download history to storage (capped)
   function _saveHistory() {
     try {
-      const trimmed = S.downloadHistory.length > 200 ? S.downloadHistory.slice(-200) : S.downloadHistory;
+      const trimmed = S.downloadHistory.length > CONFIG.MAX_HISTORY ? S.downloadHistory.slice(-CONFIG.MAX_HISTORY) : S.downloadHistory;
       S.downloadHistory = trimmed;
       chrome.storage.local.set({ downloadHistory: trimmed });
     } catch (_) { }
   }
 
-  // Persist downloaded message IDs (capped at 5000)
+  // Persist downloaded message IDs (capped)
   function _saveMids() {
     try {
       let arr = Array.from(S.downloadedMids);
-      if (arr.length > 5000) arr = arr.slice(-5000);
+      if (arr.length > CONFIG.MAX_DOWNLOADED_MIDS) arr = arr.slice(-CONFIG.MAX_DOWNLOADED_MIDS);
       S.downloadedMids = new Set(arr);
       chrome.storage.local.set({ downloadedMids: arr });
     } catch (_) { }
@@ -200,7 +209,7 @@
     } catch (_) {
       doFallback();
     }
-    setTimeout(() => URL.revokeObjectURL(url), 8000);
+    setTimeout(() => URL.revokeObjectURL(url), CONFIG.BLOB_REVOKE_DELAY_MS);
   }
 
   async function downloadUrl(url, fileName) {
@@ -488,8 +497,9 @@
   /**
    * Listen for responses from injected.js
    */
+  const ALLOWED_ORIGIN = location.origin;
   window.addEventListener("message", (event) => {
-    if (event.source !== window) return;
+    if (event.source !== window || event.origin !== ALLOWED_ORIGIN) return;
     const { type, requestId } = event.data || {};
 
     if (type === "TG_GRABBER_DOWNLOAD_COMPLETE" && _dlPendingRequests.has(requestId)) {
@@ -566,7 +576,7 @@
    * Download a video/audio by sending the stream URL to injected.js,
    * which fetches through Telegram's Service Worker in page context.
    */
-  function downloadViaInjected(streamUrl, timeoutMs = 120000) {
+  function downloadViaInjected(streamUrl, timeoutMs = CONFIG.DOWNLOAD_TIMEOUT_MS) {
     return new Promise((resolve, reject) => {
       const requestId = ++_dlRequestId;
       _activeDlRequestId = requestId;
@@ -613,6 +623,7 @@
   function checkApiReady() {
     return new Promise((resolve) => {
       const handler = (event) => {
+        if (event.source !== window || event.origin !== ALLOWED_ORIGIN) return;
         if (event.data?.type === "TG_GRABBER_API_STATUS") {
           window.removeEventListener("message", handler);
           resolve(event.data.apiReady);
@@ -620,11 +631,10 @@
       };
       window.addEventListener("message", handler);
       window.postMessage({ type: "TG_GRABBER_CHECK_API" }, "*");
-      // Timeout after 500ms
       setTimeout(() => {
         window.removeEventListener("message", handler);
         resolve(false);
-      }, 500);
+      }, CONFIG.CHECK_API_TIMEOUT_MS);
     });
   }
 
@@ -632,7 +642,7 @@
    * Download a file via Telegram's appDownloadManager API (primary strategy).
    * Returns { blobUrl, fileName, mediaType, size, mimeType } or throws.
    */
-  function downloadViaAPI(msgId, peerId, includeVideo = false, timeoutMs = 120000) {
+  function downloadViaAPI(msgId, peerId, includeVideo = false, timeoutMs = CONFIG.DOWNLOAD_TIMEOUT_MS) {
     return new Promise((resolve, reject) => {
       const requestId = ++_dlRequestId;
       _activeDlRequestId = requestId;
@@ -671,9 +681,9 @@
   function getMetadata(msgId, peerId) {
     return new Promise((resolve) => {
       const requestId = ++_dlRequestId;
-      const timer = setTimeout(() => resolve(null), 3000); // Quick timeout
+      const timer = setTimeout(() => resolve(null), CONFIG.GET_METADATA_TIMEOUT_MS);
       const handler = (event) => {
-        if (event.source !== window) return;
+        if (event.source !== window || event.origin !== ALLOWED_ORIGIN) return;
         if (event.data?.type === "TG_GRABBER_METADATA_RESULT" && event.data.requestId === requestId) {
           clearTimeout(timer);
           window.removeEventListener("message", handler);
@@ -2307,7 +2317,7 @@
               log.i(`[DL] searchSuper found: ${!!searchSuper}, aborted: ${acDl.signal.aborted}`);
               if (!searchSuper || acDl.signal.aborted) {
                 log.w("Could not open sidebar for download");
-                showToast("❌ No pudo abrir la sidebar de media", 0, 0);
+                showToast("❌ Could not open media sidebar", 0, 0);
                 setTimeout(hideToast, 3000);
                 S.downloading = false; P.active = false; return;
               }
@@ -2479,7 +2489,7 @@
               log.i(`[DL] DONE: downloaded=${P.downloaded}, skipped=${P.skipped}, total=${P.totalFound}, loops=${scrollAttempts}`);
               S.downloading = false; P.active = false; S._bulkExistingFiles = null; S._viewerConsecFails = 0;
               hideToast();
-              showToast(`✅ Listo: ${P.downloaded} descargados${P.skipped ? `, ${P.skipped} omitidos` : ""}`, 0, 0);
+              showToast(`✅ Done: ${P.downloaded} downloaded${P.skipped ? `, ${P.skipped} skipped` : ""}`, 0, 0);
               setTimeout(hideToast, 5000);
               try { chrome.runtime.sendMessage({ action: "downloadComplete", total: P.downloaded + P.skipped, skipped: P.skipped }); } catch (_) { }
               _saveMids();
@@ -2976,7 +2986,7 @@
         }
       }, 1000);
 
-      log.i("TG Media Grabber Pro v2 ready ✓");
+      log.i("TG Media Grabber Pro ready");
     }
 
     // Protect against chrome API not being available
